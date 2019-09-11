@@ -1,0 +1,142 @@
+class Seller is subclass of User
+	-- Defines a seller of the platform
+	 
+types
+	-- Type with the enum of the status of the seller
+	public SellerStatus = <PendingVerification> | <Verified> | <Blocked>; 
+	
+	-- Type with the price of the product
+	public ProductPrice = SaleItem`SaleItemPrice;
+	
+	-- Type of the category
+	public CategoryType = SaleItem`CategoryType;
+	
+	-- Type of string
+	public String = seq1 of char;
+
+values
+	-- None
+
+instance variables
+	-- Status of the seller
+	public status: SellerStatus := <PendingVerification>;
+	
+	-- Maps a product to a quantity
+	private saleItems: map String to SaleItem := {|->};
+	
+	inv status = <Blocked> or status = <PendingVerification> => saleItems = {|->};
+	inv restrictNumberOfSales(rng saleItems, getCompany());
+
+operations
+	-- Constructor of seller
+	public Seller: String * Company ==> Seller
+	Seller(sName, sCompany) == (
+		name := sName;
+		company := sCompany;
+		cash := 0.0;
+		return self
+	);
+	
+	-- Sets the verified state for the seller
+	public setVerified: () ==> () 
+	setVerified() == 
+		status := <Verified>
+	pre status = <PendingVerification>;
+	
+	-- Sets the blocked state for the seller
+	public setBlocked: () ==> () 
+	setBlocked() == 
+		atomic(
+			saleItems := {|->};
+			status := <Blocked>
+		)
+	pre status in set {<PendingVerification>, <Verified>};
+	
+	-- Adds a product to sale by this seller
+	public addProductToSale: SaleItem  ==> () 
+	addProductToSale(saleItem) == ( 
+		if(isofclass(Service, saleItem) and saleItem.getName() not in set dom saleItems)
+				then saleItems := saleItems munion {saleItem.getName() |-> saleItem}
+		elseif (isofclass(Product, saleItem) and saleItem.getName() not in set dom saleItems)
+				then saleItems := saleItems munion {saleItem.getName() |-> saleItem}
+		else
+				let p : Product = saleItems(saleItem.getName()) in ( 
+				dcl sItem : Product := saleItem; 
+				p.addQuantityByTheSeller(sItem.getStockQt())))
+		pre status = <Verified> and (isofclass(Service, saleItem) or isofclass(Product, saleItem)) and
+            if (isofclass(Service, saleItem) and saleItem.getName() in set dom saleItems) then false else true;
+		
+	-- Sells a product
+	public sellProduct: String ==> () 
+	sellProduct(sItemName) == (
+		dcl saleItem : SaleItem := saleItems(sItemName);	
+		if(isofclass(Product, saleItem))
+		then let p : Product = saleItems(saleItem.getName()) in (
+			p.removeQuantityByTheSeller(1); 
+		);
+		addFunds(saleItem.getPrice()))
+	pre status = <Verified>
+		and sItemName in set dom saleItems
+	post cash >= cash~;
+		
+	-- Sets a new price for a specific product 
+	public setNewSalePrice: String * real ==> ()
+	setNewSalePrice(saleName, price) ==
+		let p = saleItems(saleName) in (
+			p.setNewPrice(price); 
+		)
+	pre status = <Verified>
+		and saleName in set dom saleItems;
+		
+	-- Gets a list of all items being sold by the user
+	public getSaleItemsBeingSoldByMe : () ==> map String to SaleItem
+	getSaleItemsBeingSoldByMe() ==
+		return saleItems;
+		
+	-- Gets the SaleItem of the seller by the name
+	public pure getSalesByName: String ==> set of SaleItem
+	getSalesByName(sName) ==
+		if sName in set dom saleItems then return {saleItems(sName)}
+		else return {};
+	
+	-- Gets all the SaleItem of the seller by the category
+	public getSalesByCategory: CategoryType ==> set of SaleItem
+	getSalesByCategory(category) ==
+		return getCategoriesAux(rng saleItems, category);
+		
+	-- Get specific sale item by name
+	public getSaleItem : String ==> SaleItem
+	getSaleItem(sName) == (
+		return saleItems(sName);
+	)
+	pre sName in set dom saleItems;
+	
+	-- Changes a category of a ItemSale that he sells
+	public changeItemSaleCategory: SaleItem`String * SaleItem`CategoryType ==> ()
+	changeItemSaleCategory(itemSaleName, newCategory) == (
+		saleItems(itemSaleName).setCategory(newCategory)
+	)
+	pre itemSaleName in set dom saleItems;
+	
+functions
+	-- Gets all the saleItem of a category
+	public getCategoriesAux: set of SaleItem * CategoryType -> set of SaleItem
+	getCategoriesAux(saleItems, category) == (
+		{sale | sale in set saleItems & sale.getCategory() = category}
+	);
+	
+	-- Restrict the number of products by company dimension
+	public restrictNumberOfSales: set of SaleItem * Company -> bool
+	restrictNumberOfSales(saleItens, company) == (
+		cases (company.getDimension()):
+			<Micro> -> if card saleItens > 50 then false else true,
+			<Small> -> if card saleItens > 100 then false else true,
+			<Medium> -> if card saleItens> 200 then false else true,
+			<Big> -> if card saleItens > 300 then false else true
+		end
+	);
+
+traces
+	-- None
+
+end Seller

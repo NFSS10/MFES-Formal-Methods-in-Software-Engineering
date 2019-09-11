@@ -1,0 +1,231 @@
+class BuyInPortugal
+	-- Defines a main class of the platform
+	
+types
+	-- Type set of Buyers
+	public Buyers = map User`String to Buyer;
+	
+	-- Type set of Sellers
+	public Sellers = map User`String to Seller;
+	
+	-- Type set of companies
+	public Companies = map Company`CompanyName to Company;
+	
+	-- Cart Type
+	public Cart = Buyer`Cart;
+
+values
+	-- None
+
+instance variables
+	-- Set of Sellers of the platform
+	private sellers: Sellers;
+	
+	-- Set of Buyers of the platform
+	private buyers: Buyers;
+	
+	-- Set of companies in the platform
+	private companies: Companies;
+	
+	-- If a person is a seller then he is a buyer
+	inv checkSellersAndBuyers(buyers, sellers);
+
+operations
+	-- Constructor of buyinportugal
+	public BuyInPortugal: () ==> BuyInPortugal
+	BuyInPortugal() == (
+		sellers := {|->};
+		buyers := {|->};
+		companies := {|->};		
+		return self
+	);
+	
+	-- Gets all the buyers of the platform
+	public getBuyers: () ==> Buyers
+	getBuyers() == (
+		return buyers
+	);
+	
+	-- Gets all the sellers of the platform
+	public getSellers: () ==> Sellers
+	getSellers() == (
+		return sellers
+	);
+	
+	-- Gets all the companies of the platform
+	public getCompanies: () ==> Companies
+	getCompanies() == (
+		return companies
+	);
+	
+	-- Adds a new buyer to the platform
+	public register: User`String * Company`CompanyName * Company`CompanyDimension ==> ()
+	register(username, companyName, companyDimension) == (
+		if companyName in set dom companies 
+			then let company = companies(companyName) in
+			buyers := buyers munion {username |-> new Buyer(username, company)}
+		else
+			let company = new Company(companyName, companyDimension) in (
+				companies := companies munion {companyName |-> company};
+				buyers := buyers munion {username |-> new Buyer(username, company)}
+			)
+	)
+	pre username not in set dom buyers
+		and if companyName in set dom companies then 
+					let company = companies(companyName) in company.getDimension() = companyDimension
+				else true;
+	
+	-- Turn a buyer into a seller
+	public becomeSeller: User`String ==> ()
+	becomeSeller(username) == (
+		let buyer = buyers(username) in
+			sellers := sellers munion {username |-> new Seller(username, buyer.getCompany())}
+	)
+	pre username in set dom buyers and
+			username not in set dom sellers;
+					
+	-- Transfer funds between a user account (seller -> buyer)
+	public transferFunds: User`String * real ==> ()
+	transferFunds(username, value) == (
+			buyers(username).addFunds(value);
+			sellers(username).reduceFunds(value);
+	)
+	pre username in set dom buyers and
+	 		username in set dom sellers and
+	 		sellers(username).getCurrentCash() >= value;
+	
+	-- Verifies a seller so that he can sell itens
+	public verifySeller: User`String ==> ()
+	verifySeller(username) == (
+		sellers(username).setVerified();
+	)
+	pre username in set dom sellers;
+	
+	-- Adds a item to sale to a seller
+	public addItemToSale: User`String * SaleItem`String * SaleItem`SaleItemPrice * SaleItem`CategoryType * int ==> ()
+	addItemToSale(username, prodName, prodPrice, prodCategory, prodQty) == (
+		if prodQty <> -1 then sellers(username).addProductToSale(new Product(prodName, prodPrice, prodCategory, prodQty))
+		else sellers(username).addProductToSale(new Service(prodName, prodPrice, prodCategory))
+	)
+	pre username in set dom sellers;
+	
+	-- Gets all the sales by a name
+	public searchSalesByName: SaleItem`String ==> set of SaleItem
+	searchSalesByName(name) == (
+		dcl sales: set of SaleItem := {};
+		
+		for all c in set dom sellers
+		do (sales := sales union sellers(c).getSalesByName(name));
+		return sales;
+	);
+	
+	-- Gets all the sales of a category
+	public searchSalesByCategory: SaleItem`CategoryType ==> set of SaleItem
+	searchSalesByCategory(category) == (
+		dcl sales: set of SaleItem := {};
+		
+		for all c in set dom sellers
+		do (sales := sales union sellers(c).getSalesByCategory(category));
+		return sales;
+	);
+	
+	-- Set a new price to the product
+	public setNewProductPrice: User`String * Product`String * real ==> ()
+	setNewProductPrice(sellerName, prodName, prodPrice) == (
+		sellers(sellerName).setNewSalePrice(prodName, prodPrice)
+	)
+	pre sellerName in set dom sellers;
+	
+	-- Checkout cart
+	public checkoutCartOfUser : User`String * nat1 * nat1 * nat1 ==> ()
+	checkoutCartOfUser(userName, year, month, day) == (
+		dcl cartItems : Cart := buyers(userName).makeOrder(year, month, day);
+		dcl upper : nat := len cartItems;
+		for i = 1 to upper do (
+			dcl cartItem : Buyer`cartItem := cartItems(i);
+			sellItem(cartItem.sName, cartItem.product.getName());
+		);
+	)
+	pre userName in set dom buyers;
+	
+	-- Sell Item
+	private sellItem : User`String * SaleItem`String ==> ()
+	sellItem(sName, pName) == (	
+		sellers(sName).sellProduct(pName);
+	)
+	pre sName in set dom sellers;
+	
+	-- Add to cart
+	public addToCartOfUser : User`String * SaleItem`String * User`String ==> ()
+	addToCartOfUser(buyerName, sItemName, sellerName) == (
+		dcl seller : Seller := sellers(sellerName);
+		dcl saleItem : SaleItem := seller.getSaleItem(sItemName);
+		
+		buyers(buyerName).addToCart(saleItem, sellerName);
+	)
+	pre buyerName in set dom buyers 
+	and sellerName in set dom sellers;
+
+	-- Add funds
+	public addFundsToUser : User`String * SaleItem`SaleItemPrice ==> ()
+	addFundsToUser(userName, value) == (
+			buyers(userName).addFunds(value);
+	)
+	pre userName in set dom buyers;
+	
+	-- Change company dimension and name
+	public setNewCompanyInfo: Company`CompanyName * Company`CompanyName * Company`CompanyDimension ==> ()
+	setNewCompanyInfo(previousName, newCompName, newCompDimension) == (
+			dcl company : Company := companies(previousName);
+			company.setName(newCompName);
+			company.setDimension(newCompDimension);
+			companies := {previousName} <-: companies;
+			companies := companies munion {newCompName |-> company}
+	)
+	pre previousName in set dom companies;
+	
+	-- Changes a category of a product of a seller
+	public changeItemSaleCategory: User`String * SaleItem`String * SaleItem`CategoryType ==> ()
+	changeItemSaleCategory(username, productName, newCategory) == (
+		sellers(username).changeItemSaleCategory(productName, newCategory)
+	)
+	pre username in set dom sellers;
+	
+	-- Blocks a seller so that he cant sell
+	public blockSeller: User`String ==> ()
+	blockSeller(username) == (
+		sellers(username).setBlocked();
+	)
+	pre username in set dom sellers;
+	
+	-- Changes a company of a user
+	public changeUserCompany: User`String * Company`CompanyName * Company`CompanyDimension ==> ()
+	changeUserCompany(username, compName, compDimension) == (
+		if compName in set dom companies then 
+		let company = companies(compName) in (
+			if username in set dom sellers then sellers(username).setCompany(company);
+			buyers(username).setCompany(company)
+		)
+		else let company = new Company(compName, compDimension) in (
+			companies := companies munion {compName |-> company};
+			if username in set dom sellers then sellers(username).setCompany(company);
+			buyers(username).setCompany(company)
+		)
+	)
+	pre username in set dom buyers
+		and if compName in set dom companies then 
+					let company = companies(compName) in company.getDimension() = compDimension
+				else true;
+
+	
+functions
+	-- Checks if the sellers is a subset of the buyers
+	public checkSellersAndBuyers: Buyers * Sellers -> bool
+	checkSellersAndBuyers(buyers, sellers) == (
+		dom sellers subset dom buyers
+	);
+	
+traces
+	-- None
+
+end BuyInPortugal

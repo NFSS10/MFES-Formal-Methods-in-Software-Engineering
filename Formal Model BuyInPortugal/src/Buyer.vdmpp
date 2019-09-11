@@ -1,0 +1,124 @@
+class Buyer is subclass of User
+	-- Defines a Buyer of the platform
+	 
+types
+	-- Type with the price of the product
+	public SaleItemPrice = SaleItem`SaleItemPrice;
+	
+	-- String type
+	public String = seq1 of char;
+	
+	-- Type of my orders history
+	public myOrders = seq of Order;
+	
+	-- Cart Item type
+	public cartItem :: product : SaleItem
+										 sName : String;
+	
+	-- Cart type
+	public Cart = seq of cartItem;
+										
+
+values
+	-- Average number of days in a year
+	public avgDaysYear = 365.25;
+	
+	-- Average number of days in a month of the year
+	public avgDaysMonth = 30.44;
+
+instance variables
+	-- List of all orders made by this user
+	private orderHistory: myOrders := [];
+	
+	-- Cart containing the products that the user has intention to buy 
+	private cart : Cart := [];
+	
+	inv checkDates(orderHistory);
+	
+operations
+	-- Constructor of Buyer
+	public Buyer: String * Company ==> Buyer
+	Buyer(bName, bCompany) == (
+		name := bName;
+		company := bCompany;
+		cash := 0.0;		
+		return self
+	);
+	
+	-- Gets the order history of the buyer
+	public getOrderHistory : () ==> myOrders
+	getOrderHistory() ==
+		return orderHistory;
+		
+	-- Gets the itens in the cart of the buyer
+	public getCartItems : () ==> Cart
+	getCartItems() ==
+		return cart;
+		
+	-- Adds a SaleItem to the cart
+	public addToCart : SaleItem * String ==> ()
+	addToCart(sItem, sName) == (
+		cart := cart ^ [mk_cartItem(sItem, sName)])
+	pre cash >= getTotal(cart) + sItem.getPrice();
+			
+	-- Places a order with the SaleItem on the cart on the given date
+	public makeOrder : nat1 * nat1 * nat1 ==> Cart
+	makeOrder(year, month, day) == (
+		dcl productsBought : seq of SaleItem := [];
+		dcl size : nat1 := (len cart);
+		dcl oldcart : Cart := cart;
+		
+		for i = 1 to size do
+			(
+			productsBought := productsBought ^ [cart(i).product];
+			reduceFunds(cart(i).product.getPrice());
+			);
+			
+		orderHistory := orderHistory ^ [new Order(productsBought, year, month, day)];
+		resetCart();
+		return oldcart;
+		)
+	pre len cart > 0 
+	and checkStock(cart)
+	and cash >= getTotal(cart)
+	post len cart = 0;
+	
+	-- Clears the cart
+	public resetCart : () ==> ()
+	resetCart() ==
+		cart := []
+	pre len cart > 0
+	post len cart = 0;
+		
+functions
+	
+	-- Checks if there is stock available for purchase
+	public checkStock : Cart -> bool
+	checkStock(cart) == (
+		if cart = [] then true 
+		else let c = hd cart in 
+		if(isofclass(Product, c.product)) 
+		then let p : Product = c.product in if(p.getStockQt() < 1) then false else checkStock(tl cart)
+		else checkStock(tl cart)
+	);
+	
+	
+	-- Gets the total value of the items on the cart
+	public getTotal : Cart -> SaleItemPrice
+	getTotal(cart) == (
+		if cart = [] then 0.0 
+		else let c = hd cart in c.product.getPrice() + getTotal(tl cart)
+	);
+	
+	-- Checks if the orders are arranged chronologically
+	public checkDates: myOrders -> bool
+	checkDates(orders) == 
+			if len orders < 2 then true
+			else if orders(1).getDate().year * avgDaysYear + orders(1).getDate().month * avgDaysMonth + orders(1).getDate().day <= 
+				orders(2).getDate().year * avgDaysYear + orders(2).getDate().month * avgDaysMonth + orders(2).getDate().day
+			then checkDates(tl orders) else false;
+			
+traces
+	-- NONE
+
+end Buyer

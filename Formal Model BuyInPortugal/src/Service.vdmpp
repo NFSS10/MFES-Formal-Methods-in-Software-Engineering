@@ -1,0 +1,29 @@
+class Service is subclass of SaleItem
+	-- Defines a Service at sale by a seller 
+	
+types
+	-- Type of the category
+	public CategoryType = SaleItem`CategoryType;
+		
+values
+-- None	
+
+instance variables
+-- None	
+	
+operations
+	public Service: String * SaleItemPrice * CategoryType ==> Service
+	Service(pName, pPrice, pCategory) == (
+		name := pName;
+		price := pPrice;
+		category := pCategory;
+		return self
+	);
+	
+functions
+	-- None	
+	
+traces
+	-- None	
+	
+end Service

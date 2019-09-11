@@ -1,0 +1,61 @@
+class Order
+	-- Defines a order of a user
+	 
+types
+	-- Type for the sale Items bought
+	public SaleItemsBought = seq1 of SaleItem;
+	
+	-- Date type
+	public Date :: year : nat1
+								month: nat1
+								day : nat1
+	inv mk_Date(y,m,d) == m <= 12 and d <= DaysOfMonth(y, m);
+
+values
+	-- None
+
+instance variables
+	-- All the products bought in this transaction
+	private saleItems: SaleItemsBought;
+	
+	-- Date of the transaction
+	private date : Date;
+	
+operations
+	-- Constructor of seller
+	public Order: SaleItemsBought * nat1 * nat1 * nat1 ==> Order
+	Order(sib, year, month, day) == (
+		saleItems := sib;
+		date := mk_Date(year, month, day);
+		return self
+	);
+	
+	-- Gets all the products bought in this transaction
+	public getSaleItemsBought : () ==> SaleItemsBought
+	getSaleItemsBought() == 
+		return saleItems;
+	
+	-- Gets the transaction date
+	public pure getDate : () ==> Date 
+	getDate() ==
+		return date;
+					
+functions
+ 	-- Returns the number of days of specified month of the year 
+	public static DaysOfMonth : nat1 * nat1 -> nat1
+	DaysOfMonth(year, month) == (
+		if month = 4 or month = 6 or month = 9 or month = 11
+			then 30
+		elseif month = 2
+		then 
+			let leapyear = (year mod 4 = 0 and year mod 100 <> 0) or year mod 400 = 0 in 
+				(if leapyear = false
+				then 28
+				else 29)
+		else 31
+	);
+
+traces
+	-- None	
+
+end Order

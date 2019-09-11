@@ -1,0 +1,50 @@
+class Product is subclass of SaleItem
+	-- Defines a product at sale by a seller 
+	
+types
+	-- Type of the category
+	public CategoryType = SaleItem`CategoryType;
+		
+values
+	-- None	
+
+instance variables
+	-- Quantity of the product
+	private quantity: nat;
+	
+	inv quantity >= 0;
+	
+operations
+	-- Constructor of product
+	public Product: String * SaleItemPrice * CategoryType * nat ==> Product
+	Product(pName, pPrice, pCategory, qty) == (
+		name := pName;
+		price := pPrice;
+		category := pCategory;
+		quantity := qty;
+		return self
+	);
+
+	-- Adds quantity to the product
+	public addQuantityByTheSeller: nat ==> ()  
+	addQuantityByTheSeller(qty) == 
+		quantity := quantity + qty;
+	
+	-- Removes quantity in the product
+	public removeQuantityByTheSeller: nat ==> ()  
+	removeQuantityByTheSeller(qty) == 
+		quantity := quantity - qty
+	pre qty <= quantity;
+	
+	-- Gets the quantity in stock
+	public pure getStockQt : () ==> nat
+		getStockQt() ==
+			return quantity;
+	
+functions
+	-- None	
+	
+traces
+	-- None	
+	
+end Product

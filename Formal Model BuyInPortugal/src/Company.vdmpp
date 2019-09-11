@@ -1,0 +1,56 @@
+class Company
+	-- Defines a Company of a user 
+	
+types
+	-- Type of the company name
+	public CompanyName = seq1 of char;
+	
+	-- Enum corresponding to the available dimensions of the company
+	public CompanyDimension = <Micro> | <Small> | <Medium> | <Big> ; 
+		
+values
+	-- None	
+
+instance variables
+	-- Company dimension
+	private dimension : CompanyDimension;
+	
+	-- Company Name
+	private name : CompanyName;
+	
+operations
+	-- Constructor of company
+	public Company: CompanyName * CompanyDimension ==> Company
+	Company(cName, cDimension) == (
+		name := cName;
+		dimension := cDimension;
+		return self
+	);
+		
+	-- Gets the name of the company
+	public getName : () ==> CompanyName
+		getName() ==
+			return name;
+	
+	-- Gets the dimension of the company
+	public pure getDimension : () ==> CompanyDimension
+		getDimension() ==
+			return dimension;
+			
+	-- Changes the company name
+	public setName: CompanyName ==> ()
+		setName(newName) ==
+			name := newName;
+
+	-- Changes the company dimension
+	public setDimension: CompanyDimension ==> ()
+		setDimension(newDimension) ==
+			dimension := newDimension;
+	
+functions
+	-- None	
+	
+traces
+	-- None	
+
+end Company

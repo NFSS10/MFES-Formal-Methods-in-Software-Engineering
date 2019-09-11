@@ -1,0 +1,60 @@
+class User
+-- Defines an user
+
+types
+	-- String type
+		public String = seq1 of char;
+		
+values
+	-- None
+
+instance variables
+	-- Name 
+	protected name : String;
+	
+	-- company that users belongs to
+	protected company : Company;
+	
+	-- account money
+	protected cash : real;
+	
+	inv cash >= 0.0;
+	
+operations	
+		
+	-- Gets the user company
+	public pure getCompany : () ==> Company
+	getCompany() ==
+		return company;
+		
+	-- Sets a new user company
+	public setCompany: Company ==> ()
+	setCompany(newCompany) ==
+		company := newCompany;
+			
+	-- Gets the current cash of the user
+	public pure getCurrentCash : () ==> real
+	getCurrentCash() ==
+		return cash;
+			
+	-- Increases user cash
+	public addFunds : real ==> ()
+	addFunds(value) ==
+		cash := cash + value
+	pre value >= 0.0
+	post cash >= cash~;
+		
+	-- Decreases user cash
+	public reduceFunds : real ==> ()
+	reduceFunds(value) ==
+		cash := cash - value
+	pre value <= cash and value >= 0.0
+	post cash <= cash~;
+	
+functions
+	--None
+	
+traces
+	--None
+	
+end User

@@ -1,0 +1,63 @@
+class SaleItem
+	-- Defines a sale item 
+ 
+types
+	-- String type
+	public String = seq1 of char;
+		
+	-- Type of the price of this sale item in euros
+	public SaleItemPrice = real;
+		
+	-- Type of category of the product that is predefined
+	public CategoryType = <Agriculture> | <Food> | <Beauty> | <Health> | <Books> | <Clothes> | <Car> | <Home> | <Sports> | <Toys> | <Movies> | <Electronic>; 
+
+values
+	-- None
+
+instance variables
+	-- Name 
+	protected name: String;
+	
+	-- Price
+	protected price: SaleItemPrice;
+	
+	-- Category
+	protected category: CategoryType;
+	
+	-- Price must be positive
+	inv price >= 0.0;
+	
+operations
+	-- Changes the price
+	public setNewPrice: SaleItemPrice ==> ()
+	setNewPrice(newPrice) ==
+		price := newPrice
+	pre newPrice >= 0.0;
+		
+	-- Changes the category 
+	public setCategory: CategoryType ==> ()
+	setCategory(newCategory) ==
+		category := newCategory;
+		
+	-- Gets the actual price of the sale item
+	public pure getPrice: () ==> SaleItemPrice
+	getPrice() ==
+		return price;
+			
+	-- Gets the name of the sale item
+	public pure getName : () ==> String
+	getName() == 
+		return name;
+		
+	-- Gets the category name of the sale item
+	public pure getCategory : () ==> CategoryType
+	getCategory() ==
+		return category;
+
+functions
+	-- None
+
+traces
+	-- None
+
+end SaleItem

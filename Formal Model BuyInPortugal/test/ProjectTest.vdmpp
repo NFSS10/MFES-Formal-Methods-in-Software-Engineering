@@ -1,0 +1,369 @@
+class ProjectTest is subclass of MyTestCase
+/*
+  Contains the test cases for the BuyInPortugal.
+  Illustrates a scenario-based testing approach.
+  The test cases cover all usage scenarios as well as all states and transitions.
+*/
+types
+-- None
+values
+-- None
+instance variables
+-- None
+operations
+	
+	/*
+		Tests the whole process of buying something in the system, starting by registering two users (one is the seller and the other the buyer), 
+		adding a product to sale by the seller, adding funds to the buyer,
+		adding to cart that product and finally the checkout.
+		Also, it tests if editing a price by his seller works correctly.
+		
+	  - as described in section 2.1 of the report, covering requirements R2, R3, R8, R9 e R13.
+	*/
+	public testCheckoutCart() == (
+		dcl b : BuyInPortugal := new BuyInPortugal();
+    b.register("jaquim", "PeixeInternacional", <Big>);
+	 	b.register("Alfredo", "pesca", <Micro>);
+	 	b.becomeSeller("jaquim");
+	 	b.verifySeller("jaquim");
+	 	b.addItemToSale("jaquim", "prod", 40.99, <Home>, 1);
+	 	
+	 	-- comment next line line in order to break pre-condition corresponding to the verification of having enough money to add to cart
+	 	b.addFundsToUser("Alfredo", 50.00); 
+	 	-- change next line to b.addToCartOfUser("Alfredo", "prod", "unexistent"); to break pre-condition that validates the name given as a seller of the system.
+	 	b.addToCartOfUser("Alfredo", "prod", "jaquim");
+	 	b.checkoutCartOfUser("Alfredo", 2017, 12, 29);
+	 	
+	 	-- testing if user Alfredo (the buyer in this scenario) has the product, the cash decreased, etc.
+	 	let buyers : map User`String to Buyer = b.getBuyers() in (
+	 	assertEqual(buyers("Alfredo").getCurrentCash(), 50.00 - 40.99);
+	 	assertEqual(len buyers("Alfredo").getOrderHistory(), 1);
+	 	assertEqual(buyers("Alfredo").getOrderHistory()(1).getSaleItemsBought()(1).getName(), "prod");
+	 	assertEqual(buyers("Alfredo").getOrderHistory()(1).getSaleItemsBought()(1).getPrice(), 40.99);
+	 	assertEqual(buyers("Alfredo").getOrderHistory()(1).getSaleItemsBought()(1).getCategory(), <Home>);
+	 	assertEqual(buyers("Alfredo").getCompany().getName(), "pesca");
+	 	assertEqual(buyers("Alfredo").getCompany().getDimension(), <Micro>);
+	 	assertEqual(len buyers("Alfredo").getCartItems(), 0); 	
+	 	);
+	 	
+	 	-- testing if user Jaquim (the seller in this scenario) sold his product with no worries (received cash, stock decreased, etc)
+	 	let sellers : map User`String to Seller = b.getSellers() in (
+	 	dcl product : Product := sellers("jaquim").getSaleItemsBeingSoldByMe()("prod");
+	 	assertEqual(sellers("jaquim").status, <Verified>);
+	 	assertEqual(sellers("jaquim").getCurrentCash(), 40.99);
+	 	-- change next line to b.transferFunds("jaquim", 41.00), it breaks pre-condition that verifies if has enough cash to transfer
+	 	b.transferFunds("jaquim", 30.00);
+	 	assertEqual(sellers("jaquim").getCurrentCash(), 40.99 - 30.00);
+	 	assertEqual(b.getBuyers()("jaquim").getCurrentCash(), 30.00);
+	 	
+	 	assertEqual(product.getStockQt(), 0);
+	 	b.addItemToSale("jaquim", "prod", 40.99, <Home>, 1);
+	 	(
+	 		dcl buyers : map User`String to Buyer := b.getBuyers();
+	 		-- change next line to b.addFundsToUser("Alfredo", -5.00) to verify that you cant add negative value in cash
+	 		b.addFundsToUser("Alfredo", 50.00);
+	 		b.addToCartOfUser("Alfredo", "prod", "jaquim");
+	 		assertEqual(len buyers("Alfredo").getCartItems(), 1);
+	 	);
+	 	
+	 	(
+	 	dcl product2 : Product := sellers("jaquim").getSaleItemsBeingSoldByMe()("prod");
+	 	assertEqual(product2.getStockQt(), 1);
+	 	);
+	 	
+	 	-- change next line to b.setNewProductPrice("jaquim", "prod", -1) too see that pre-condition breaks because the new price must be higher or equal to 0
+	 	b.setNewProductPrice("jaquim", "prod", 72.25);
+	 	assertEqual(sellers("jaquim").getSaleItemsBeingSoldByMe()("prod").getPrice(), 72.25);
+	 	);
+	);
+	
+	/*
+	
+	Tests if blocking a seller works correctly.
+	It is expected that during this time he cant sell any products and in case he got some, they are removed.
+	- as described in section 2.1 of the report, covering requirements R7.
+	*/
+	public testBlockSeller() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+    b.register("jaquim", "PeixeInternacional", <Medium>);
+	 	b.becomeSeller("jaquim");
+	 	b.verifySeller("jaquim");
+	 	b.addItemToSale("jaquim", "prod", 40.99, <Home>, 1);
+	 	
+	 	(
+	 		dcl sellers : map User`String to Seller := b.getSellers();
+	 		b.blockSeller("jaquim");
+	 		assertEqual(sellers("jaquim").getSaleItemsBeingSoldByMe(), {|->});
+	 		assertEqual(sellers("jaquim").status, <Blocked>);
+	 	);
+	
+	);
+	
+	/*
+		Similar to the first test, but in this case its tested the purchase of services and not products.
+		- as described in section 2.1 of the report, covering requirements R2, R3, R8 e R9.
+	*/
+	public testAddAndPurchaseService() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+    b.register("jaquim", "PeixeInternacional", <Big>);
+	 	b.register("Alfredo", "pesca", <Micro>);
+	 	b.becomeSeller("jaquim");
+	 	b.verifySeller("jaquim");
+	 	b.addItemToSale("jaquim", "massagem", 20.99, <Home>, -1);
+	 	-- b.addItemToSale("jaquim", "massagem", 20.99, <Home>, -1); -- uncomment this line to break pre-condition - Seller cant add a repeated service.
+	 	b.addFundsToUser("Alfredo", 50.00);
+	 	b.addToCartOfUser("Alfredo", "massagem", "jaquim");
+	 	b.checkoutCartOfUser("Alfredo", 2017, 2, 28);
+	 	
+	 	let buyers : map User`String to Buyer = b.getBuyers() in (
+	 	assertEqual(buyers("Alfredo").getCurrentCash(), 50.00 - 20.99);
+	 	assertEqual(len buyers("Alfredo").getOrderHistory(), 1);
+	 	assertEqual(buyers("Alfredo").getOrderHistory()(1).getSaleItemsBought()(1).getName(), "massagem");
+	 	assertEqual(buyers("Alfredo").getOrderHistory()(1).getSaleItemsBought()(1).getPrice(), 20.99);
+	 	assertEqual(buyers("Alfredo").getOrderHistory()(1).getSaleItemsBought()(1).getCategory(), <Home>);
+	 	assertEqual(len buyers("Alfredo").getCartItems(), 0); 	
+	 	);
+	 	
+	 	b.addToCartOfUser("Alfredo", "massagem", "jaquim");
+	 	
+	 	--change next line to b.checkoutCartOfUser("Alfredo", 2017, 2, 27) to break invariant that verifies if the date of the order to be made is more recent than the others
+	 	b.checkoutCartOfUser("Alfredo", 2017, 3, 31);
+	 	(
+	 		dcl buyers : map User`String to Buyer := b.getBuyers();
+	 		dcl numOrders : nat1 := len buyers("Alfredo").getOrderHistory();
+	 		assertEqual(numOrders, 2);
+	 		
+	 		-- both orders have just one service that is "massagem"
+	 		for i = 1 to numOrders do (
+	 			assertEqual(len buyers("Alfredo").getOrderHistory()(i).getSaleItemsBought(), 1);
+	 			assertEqual(buyers("Alfredo").getOrderHistory()(i).getSaleItemsBought()(1).getName(), "massagem");
+	 			assertEqual(buyers("Alfredo").getOrderHistory()(i).getSaleItemsBought()(1).getPrice(), 20.99);
+	 			assertEqual(buyers("Alfredo").getOrderHistory()(i).getSaleItemsBought()(1).getCategory(), <Home>);
+	 		);
+	 	);
+	
+	);
+
+	/*
+		Testing if editing a company works correctly.
+		It's expected that the old company get replaced by the one passed as argument.
+		- as described in section 2.1 of the report, covering requirements R12.
+	*/
+	public testEditCompany() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jorge", "pesca", <Micro>);
+		-- change next line to b.setNewCompanyInfo("Azeitugal", "pescaria", <Small>) to break pre-condition that verifies if company exists in the system.
+		b.setNewCompanyInfo("pesca", "pescaria", <Small>);
+		
+		assertEqual(dom b.getCompanies(), {"pescaria"});
+		assertEqual(b.getCompanies()("pescaria").getName(), "pescaria");
+		assertEqual(b.getCompanies()("pescaria").getDimension(), <Small>);
+		assertEqual(b.getBuyers()("jorge").getCompany().getName(), "pescaria");
+	);
+	
+	/*
+		Testing a scenario where two users registered in the system and they cant have the same name
+	*/
+	public testRegisterTwoUserWithSameCompany() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jorge", "pesca", <Micro>);
+		b.register("manuel", "pesca", <Micro>);
+		-- b.register("manuel", "pesca", <Small>); Comment the line above in case of trying this line, Result : Breaks the pre-condition
+			
+		assertEqual(b.getCompanies()("pesca").getDimension(), <Micro>);
+	
+	);
+	
+	/*
+		Tests if the search funcionality works as expected. Given a string, either a name or a category, it should return all matching products.
+		- as described in section 2.1 of the report, covering requirements R4.
+	*/
+	public testSearch() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jaquim", "pesca", <Micro>);
+		b.register("Alfredo", "Azeitugal", <Medium>);
+		b.becomeSeller("jaquim");
+		b.verifySeller("jaquim");
+		b.becomeSeller("Alfredo");
+		b.verifySeller("Alfredo");
+		b.addItemToSale("jaquim", "prod", 1, <Home>, 1);
+		b.addItemToSale("jaquim", "mel", 3.99, <Food>, 5);
+		b.addItemToSale("jaquim", "Arrumar casa", 63.99, <Home>, -1);
+		b.addItemToSale("Alfredo", "mel", 1.99, <Food>, 1);
+		b.addItemToSale("Alfredo", "massagem", 20.99, <Home>, -1);
+		(
+			-- search by name
+			dcl saleItems : set of SaleItem := b.searchSalesByName("mel");
+			
+			-- test the case of not founding any matching name
+			dcl notFound : set of SaleItem := b.searchSalesByName("não existe");
+			
+			assertEqual(notFound, {});
+			
+			for all saleItem in set saleItems do (
+					assertEqual(saleItem.getName(), "mel");
+			);
+		);
+		
+		(
+			-- search by category
+			dcl saleItems : set of SaleItem := b.searchSalesByCategory(<Home>);
+			
+			-- test the case of not founding any matching name
+			dcl notFound : set of SaleItem := b.searchSalesByCategory(<Car>);
+			
+			
+			assertEqual(notFound, {});
+			
+			for all saleItem in set saleItems do (
+					assertEqual(saleItem.getCategory(), <Home>);
+			);
+		);
+	);
+
+	/*
+		Tests if editing a company of a user works correctly.
+		In case the new company doesn't exists in the system yet, it is stored.
+		- as described in section 2.1 of the report, covering requirements R11.
+	*/
+	public testEditUserCompany() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jorge", "pesca", <Micro>);
+		-- change next line to b.register("miguel", "pesca", <Small>) to break pre-condition. Equal companies have the same dimension.
+		b.register("miguel", "pesca", <Micro>);
+		b.register("jose", "pesca", <Micro>);
+		b.becomeSeller("jorge");
+		b.verifySeller("jorge");
+		b.becomeSeller("miguel");
+		b.verifySeller("miguel");
+		b.changeUserCompany("jorge", "Azeitugal", <Big>);
+		b.changeUserCompany("miguel", "Azeitugal", <Big>);
+		
+		assertEqual(b.getBuyers()("jorge").getCompany().getName(), "Azeitugal");
+		assertEqual(b.getBuyers()("jorge").getCompany().getDimension(), <Big>);
+		
+		assertEqual(dom b.getCompanies(), {"Azeitugal", "pesca"});
+	);
+	
+	/*
+		Tests if editing a item sale category of a user works correctly.
+		- as described in section 2.1 of the report, covering requirements R10.
+	*/
+	public testEditItemSaleCategory() == (
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jorge", "pesca", <Small>);
+		b.becomeSeller("jorge");
+		b.verifySeller("jorge");
+		b.addItemToSale("jorge", "pizza", 1, <Food>, 5);
+		assertEqual(b.getSellers()("jorge").getSaleItemsBeingSoldByMe()("pizza").getCategory(), <Food>);
+		-- change next line to b.changeItemSaleCategory("jorge", "canadianas", <Home>); to break pre-condition. The item must exist in the seller products.
+		b.changeItemSaleCategory("jorge", "pizza", <Home>);
+		assertEqual(b.getSellers()("jorge").getSaleItemsBeingSoldByMe()("pizza").getCategory(), <Home>);
+	);
+	
+	/*
+		Test registering in the system.
+		- as described in section 2.1 of the report, covering requirements R1.
+	*/
+	public testRegister() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jorge", "pesca", <Small>);
+		assertEqual(dom b.getBuyers(), {"jorge"});
+	);
+	
+	/*
+		Test changing seller status or buyer become a seller aswell.
+		- as described in section 2.1 of the report, covering requirements R5 e R6.
+	*/
+	public testSeller() == (
+	
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jorge", "pesca", <Small>);
+		b.becomeSeller("jorge");
+		assertEqual(dom b.getSellers(), {"jorge"});
+		b.verifySeller("jorge");
+		assertEqual(b.getSellers()("jorge").status, <Verified>);
+	);
+	
+	/*
+	 Tests the sale item number restriction for a specified dimension
+	*/
+	private restrictSales(cDimension : Company`CompanyDimension, max : nat1) == (
+		dcl b : BuyInPortugal := new BuyInPortugal();
+		b.register("jorge", "pesca", cDimension);
+		b.becomeSeller("jorge");
+		b.verifySeller("jorge");
+		
+		-- adds x number of products to the seller "jorge" where x is the second argument passed by.
+		for i = 1 to max do (
+			dcl name : seq of char := [];
+			
+			-- construct a different name for a product
+			for i = 1 to i do (
+				name := name ^ "a";
+			);
+			
+			b.addItemToSale("jorge", name, 40.99, <Home>, 1);
+		);
+	);
+	
+	/*
+		Tests the restriction to the number of different products that each seller can have according to his company dimension
+	*/
+	public testRestrictSales() == (
+		
+		-- TEST ONE AT A TIME
+		
+		restrictSales(<Micro>, 51);
+		--restrictSales(<Small>, 101);
+		--restrictSales(<Medium>, 201);
+		--restrictSales(<Big>, 301);
+	);
+	
+	
+	public static main: () ==> ()
+	main() ==
+	(	
+		new ProjectTest().testCheckoutCart();
+		IO`println("Checkout cart test accepted");
+		
+		new ProjectTest().testBlockSeller();
+		IO`println("Block seller test accepted");
+		
+		new ProjectTest().testAddAndPurchaseService();
+		IO`println("Add and purchase service test accepted");
+		
+		new ProjectTest().testEditCompany();
+		IO`println("Edit company test accepted");
+		
+		new ProjectTest().testRegisterTwoUserWithSameCompany();
+		IO`println("Register two users with same company test accepted");
+		
+		new ProjectTest().testSearch();
+		IO`println("Search test accepted");
+		
+		new ProjectTest().testEditUserCompany();
+		IO`println("Edit user company test accepted");
+		
+		new ProjectTest().testEditItemSaleCategory();
+		IO`println("Edit item sale category test accepted");
+		
+		new ProjectTest().testRegister();
+		IO`println("Register test accepted");
+		
+		new ProjectTest().testSeller();
+		IO`println("Seller test accepted");
+		
+		--new ProjectTest().testRestrictSales();
+		--IO`println("Restrict sale item number test accepted");
+	);
+
+
+end ProjectTest
